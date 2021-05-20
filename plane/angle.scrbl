@@ -21,11 +21,20 @@
 
 
 An @deftech{angle} is a measure of rotation. Angles can be measured in degrees, where a full rotation
-is 360 degrees, or radians, where a full rotation is 2π radians. Because turning more than a full
-rotation leaves an object in the same orientation as if it had only fractionally rotated, angles of
-equivalent rotations are always normalized to the smallest nonnegative rotation. That is,
-@racket[(degrees 10)] and @racket[(degrees 370)] are @racket[equal?] and cannot be distinguished.
+is 360 degrees, or radians, where a full rotation is 2π radians.
 
+Because turning more than a full rotation leaves an object in the same orientation as if it had only
+fractionally rotated, angles of equivalent rotations are always normalized to the smallest nonnegative
+rotation. That is, @racket[(degrees 10)] and @racket[(degrees 370)] are @racket[equal?] and cannot be
+distinguished.
+
+Like numbers, angles can be either exact or inexact. The @racket[degrees] and @racket[rotations]
+constructors always return exact angles when given exact inputs. However, the @racket[radians]
+constructor never returns exact angles, with the exception of @racket[(radians 0)]. Exactness
+primarily matters when using the trigonometric functions on angles such as @racket[angle-sin], which
+make an effort to produce exact results from exact angles when possible. For example,
+@racket[(angle-sin (degrees 30))] produces @racket[1/2] whereas @racket[(sin (degrees->radians 30))]
+produces @racket[0.49999999999999994].
 
 @defproc[(angle? [v any/c]) boolean?]{
  A predicate for @tech{angles}.}
@@ -90,3 +99,40 @@ equivalent rotations are always normalized to the smallest nonnegative rotation.
    (angle-rotations (degrees 90))
    (angle-rotations (rotations 1/4))
    (angle-rotations (radians pi)))}
+
+
+@section{Trigonometric Functions}
+
+
+@defproc[(angle-sin [a angle?]) (real-in -1 1)]{
+ Returns the sine of @racket[a]. The result is exact when @racket[a] is exact and when the sine of
+ @racket[a] is a rational number.
+
+ @(examples
+   #:eval (make-evaluator)
+   (angle-sin (degrees 30))
+   (angle-sin (degrees 45))
+   (angle-sin (degrees 60)))}
+
+
+@defproc[(angle-cos [a angle?]) (real-in -1 1)]{
+ Returns the cosine of @racket[a]. The result is exact when @racket[a] is exact and when the cosine of
+ @racket[a] is a rational number.
+
+ @(examples
+   #:eval (make-evaluator)
+   (angle-cos (degrees 30))
+   (angle-cos (degrees 45))
+   (angle-cos (degrees 60)))}
+
+
+@defproc[(angle-tan [a angle?]) (and/c real? (not/c nan?))]{
+ Returns the tangent of @racket[a]. The result is exact when @racket[a] is exact and when the tangent
+ of @racket[a] is either a rational number or infinity.
+
+ @(examples
+   #:eval (make-evaluator)
+   (angle-tan (degrees 30))
+   (angle-tan (degrees 45))
+   (angle-tan (degrees 60))
+   (angle-tan (degrees 90)))}
