@@ -155,7 +155,7 @@
     [5/8 1]
     [3/4 -inf.0]
     [7/8 -1]
-    [x (cos (* x 2 pi))]))
+    [x (tan (* x 2 pi))]))
 
 
 (define arctan (case-lambda [(x) (arctan1 x)] [(y x) (arctan2 y x)]))
