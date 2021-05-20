@@ -9,6 +9,8 @@
  (contract-out
   [origin point?]
   [point-add (-> point? ... point?)]
+  [point-negate (-> point? point?)]
+  [point-subtract (-> point? point? ... point?)]
   [point-sum (-> (sequence/c point?) point?)]
   [into-point-sum (reducer/c point? point?)]
   [point-distance (-> point? point? (and/c (>=/c 0) (not/c infinite?)))]
@@ -117,6 +119,15 @@
    point
    (reducer-map into-sum #:domain point-x)
    (reducer-map into-sum #:domain point-y)))
+
+
+(define (point-negate p)
+  (match-define (point x y) p)
+  (point (- x) (- y)))
+
+
+(define (point-subtract p . qs)
+  (point-add p (point-negate (point-sum qs))))
 
 
 (module+ test

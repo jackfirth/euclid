@@ -17,3 +17,4 @@ dimensional geometric objects exist in is called the @deftech{Euclidean plane}.
 
 @include-section[(lib "euclid/plane/point.scrbl")]
 @include-section[(lib "euclid/plane/angle.scrbl")]
+@include-section[(lib "euclid/plane/ray.scrbl")]
