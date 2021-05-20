@@ -5,13 +5,13 @@
 
 
 (provide
+ rotations
+ degrees
+ radians
  (contract-out
   [angle? predicate/c]
-  [degrees (-> (and/c real? (not/c infinite?) (not/c nan?)) angle?)]
-  [radians (-> (and/c real? (not/c infinite?) (not/c nan?)) angle?)]
-  [rotations (-> (and/c real? (not/c infinite?) (not/c nan?)) angle?)]
   [angle-degrees (-> angle? (and/c (>=/c 0) (</c 360)))]
-  [angle-radians (-> angle? (and/c (>=/c 0) (</c tau)))]
+  [angle-radians (-> angle? (and/c (>=/c 0) (</c (* 2 pi))))]
   [angle-rotations (-> angle? (and/c (>=/c 0) (</c 1)))]
   [angle-sin (-> angle? (real-in -1 1))]
   [angle-cos (-> angle? (real-in -1 1))]
@@ -25,12 +25,15 @@
   [into-angle-sum (reducer/c angle? angle?)]))
 
 
-(require racket/match
+(require (for-syntax racket/base
+                     racket/syntax)
+         racket/match
          racket/math
          racket/sequence
          rebellion/base/option
          rebellion/streaming/reducer
-         rebellion/streaming/transducer)
+         rebellion/streaming/transducer
+         syntax/parse/define)
 
 
 (module+ test
@@ -41,11 +44,28 @@
 ;@----------------------------------------------------------------------------------------------------
 
 
-(define tau (* 2 pi))
+;; This macro is for defining the (degrees d), (radians r), and (rotations x) forms which double as
+;; constructors with contracts and match expanders.
+(define-syntax-parse-rule
+  (define-contracted-match-constructor name:id
+    (~alt
+     (~once (~seq #:constructor private-constructor:id))
+     (~once (~seq #:predicate predicate:expr))
+     (~once (~seq #:field-accessor private-accessor:id))
+     (~once (~seq #:field-contract field-contract:expr)))
+    ...)
+  #:with contracted-constructor (format-id #'here "contracted:~a" #'name)
+  (begin
+    (define-module-boundary-contract contracted-constructor private-constructor
+      (-> field-contract predicate)
+      #:name-for-blame name)
+    (define-match-expander name
+      (syntax-parser [(_ pat:expr) #'(? predicate (app private-accessor pat))])
+      (make-rename-transformer #'contracted-constructor))))
 
 
 (struct angle (rotations)
-  #:constructor-name rotations
+  #:constructor-name unchecked:rotations
   #:transparent
   #:guard (λ (r _) (- r (floor r)))
 
@@ -62,21 +82,41 @@
   #:property prop:custom-print-quotable 'never)
 
 
-(define (degrees d)
-  (rotations (/ d 360)))
-
-
-(define (radians r)
-  (rotations (/ r 2 pi)))
+(define-contracted-match-constructor rotations
+  #:constructor unchecked:rotations
+  #:predicate angle?
+  #:field-accessor angle-rotations
+  #:field-contract (and/c real? (not/c infinite?) (not/c nan?)))
 
 
 (define (angle-degrees a)
   (* (angle-rotations a) 360))
 
 
+(define (unchecked:degrees d)
+  (unchecked:rotations (/ d 360)))
+
+
+(define-contracted-match-constructor degrees
+  #:constructor unchecked:degrees
+  #:predicate angle?
+  #:field-accessor angle-degrees
+  #:field-contract (and/c real? (not/c infinite?) (not/c nan?)))
+
+
 (define (angle-radians a)
   (* (angle-rotations a) 2 pi))
 
+
+(define (unchecked:radians r)
+  (unchecked:rotations (/ r 2 pi)))
+
+
+(define-contracted-match-constructor radians
+  #:constructor unchecked:radians
+  #:predicate angle?
+  #:field-accessor angle-radians
+  #:field-contract (and/c real? (not/c infinite?) (not/c nan?)))
 
 (module+ test
   (test-case "rotations"
@@ -92,37 +132,37 @@
 
 
 (define (angle-sin a)
-  (match (angle-rotations a)
-    [0 0]
-    [1/12 1/2]
-    [1/4 1]
-    [5/12 1/2]
-    [1/2 0]
-    [7/12 1/2]
-    [3/4 -1]
-    [11/12 -1/2]
-    [x (sin (* x 2 pi))]))
+  (match a
+    [(degrees 0) 0]
+    [(degrees 30) 1/2]
+    [(degrees 90) 1]
+    [(degrees 150) 1/2]
+    [(degrees 180) 0]
+    [(degrees 210) 1/2]
+    [(degrees 270) -1]
+    [(degrees 330) -1/2]
+    [(radians r) (sin r)]))
 
 
 (define (angle-cos a)
-  (match (angle-rotations a)
+  (match a
     ;; For exact angles whose sine and cosine should be the same, we have to make sure to always use
     ;; the sine function. Racket's built-in sine and cosine implementations have slightly different
     ;; rounding behavior so if we don't choose the same function, then sin(45 degrees) and
     ;; cos(45 degrees) won't be equal.
-    [0 1]
-    [1/8 (angle-sin a)]
-    [1/6 1/2]
-    [1/4 0]
-    [1/3 -1/2]
-    [3/8 (angle-sin a)]
-    [1/2 -1]
-    [5/8 (angle-sin a)]
-    [2/3 -1/2]
-    [3/4 0]
-    [5/6 1/2]
-    [7/8 (angle-sin a)]
-    [x (cos (* x 2 pi))]))
+    [(degrees 0) 1]
+    [(degrees 45) (angle-sin a)]
+    [(degrees 60) 1/2]
+    [(degrees 90) 0]
+    [(degrees 120) -1/2]
+    [(degrees 135) (angle-sin a)]
+    [(degrees 180) -1]
+    [(degrees 225) (angle-sin a)]
+    [(degrees 240) -1/2]
+    [(degrees 270) 0]
+    [(degrees 300) 1/2]
+    [(degrees 315) (angle-sin a)]
+    [(radians r) (cos r)]))
 
 
 (module+ test
@@ -146,16 +186,16 @@
 
 
 (define (angle-tan a)
-  (match (angle-rotations a)
-    [0 0]
-    [1/8 1]
-    [1/4 +inf.0]
-    [3/8 -1]
-    [1/2 0] 
-    [5/8 1]
-    [3/4 -inf.0]
-    [7/8 -1]
-    [x (tan (* x 2 pi))]))
+  (match a
+    [(degrees 0) 0]
+    [(degrees 45) 1]
+    [(degrees 90) +inf.0]
+    [(degrees 135) -1]
+    [(degrees 180) 0] 
+    [(degrees 225) 1]
+    [(degrees 270) -inf.0]
+    [(degrees 315) -1]
+    [(radians r) (tan r)]))
 
 
 (define arctan (case-lambda [(x) (arctan1 x)] [(y x) (arctan2 y x)]))
@@ -175,7 +215,8 @@
   (cond
     [(positive? x) (present (arctan1 (/ y x)))]
     [(negative? x)
-     (present (angle-add (arctan1 (/ y x)) (if (negative? y) (degrees -180) (degrees 180))))]
+     (present (arctan1 (/ y x)))
+     #;(present (angle-add (arctan1 (/ y x)) (if (negative? y) (degrees -180) (degrees 180))))]
     [(positive? y) (present (degrees 90))]
     [(negative? y) (present (degrees 270))]
     [else absent]))
@@ -190,4 +231,9 @@
 
 
 (define into-angle-sum
-  (reducer-map into-sum #:domain angle-rotations #:range rotations))
+  (reducer-map
+   into-sum
+   #:domain angle-rotations
+  ;; Can't eta-reduce this lambda because it interacts weirdly with
+  ;; define-contracted-match-constructor and causes use-before-definition errors.
+   #:range (λ (r) (rotations r))))

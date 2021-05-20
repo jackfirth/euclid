@@ -4,6 +4,7 @@
 @(require (for-label euclid/plane/angle
                      racket/base
                      racket/contract/base
+                     racket/match
                      racket/math)
           (submod euclid/private/scribble-evaluator-factory doc)
           scribble/example)
@@ -12,6 +13,7 @@
 @(define make-evaluator
    (make-module-sharing-evaluator-factory
     #:public (list 'euclid/plane/angle
+                   'racket/match
                    'racket/math)
     #:private (list 'racket/base)))
 
@@ -36,6 +38,7 @@ make an effort to produce exact results from exact angles when possible. For exa
 @racket[(angle-sin (degrees 30))] produces @racket[1/2] whereas @racket[(sin (degrees->radians 30))]
 produces @racket[0.49999999999999994].
 
+
 @defproc[(angle? [v any/c]) boolean?]{
  A predicate for @tech{angles}.}
 
@@ -47,7 +50,22 @@ produces @racket[0.49999999999999994].
    #:eval (make-evaluator)
    (degrees 50)
    (degrees -10)
-   (degrees 500))}
+   (degrees 500))
+
+ The @racket[degrees] constructor can also be used as a match expander. The pattern
+ @racket[(degrees pat)] matches any @racket[angle?] whose measure in degrees matches @racket[pat].
+
+ @(examples
+   #:eval (make-evaluator)
+   (eval:no-prompt
+    (define (north? a)
+      (match a
+        [(degrees 90) #true]
+        [_ #false])))
+
+   (north? (degrees 90))
+   (north? (degrees 270))
+   (north? (rotations 1/4)))}
 
 
 @defproc[(radians [r real?]) angle?]{
@@ -58,7 +76,24 @@ produces @racket[0.49999999999999994].
  @(examples
    #:eval (make-evaluator)
    (radians pi)
-   (radians (/ pi 4)))}
+   (radians (/ pi 4)))
+
+ The @racket[radians] constructor can also be used as a match expander. The pattern
+ @racket[(radians pat)] matches any @racket[angle?] whose measure in radians matches @racket[pat].
+
+ @(examples
+   #:eval (make-evaluator)
+   (eval:no-prompt
+    (define (small-acute-angle? a)
+      (match a
+        (code:comment @#,elem{Note that 1 radian is a little less than 60 degrees.})
+        [(radians x) #:when (<= 0 x 1) #true]
+        [_ #false])))
+
+   (small-acute-angle? (radians 0))
+   (small-acute-angle? (radians 1/2))
+   (small-acute-angle? (degrees 50))
+   (small-acute-angle? (degrees 80)))}
 
 
 @defproc[(rotations [x real?]) angle?]{
@@ -67,7 +102,23 @@ produces @racket[0.49999999999999994].
  @(examples
    #:eval (make-evaluator)
    (rotations 1/4)
-   (rotations 1/36))}
+   (rotations 1/36))
+
+ The @racket[rotations] constructor can also be used as a match expander. The pattern
+ @racket[(rotations pat)] matches any @racket[angle?] whose measure in fractions of a rotation matches
+ @racket[pat].
+
+ @(examples
+   #:eval (make-evaluator)
+   (eval:no-prompt
+    (define (north? a)
+      (match a
+        [(rotations 1/4) #true]
+        [_ #false])))
+
+   (north? (rotations 1/4))
+   (north? (degrees 90))
+   (north? (degrees 270)))}
 
 
 @defproc[(angle-degrees [a angle?]) (and/c (>=/c 0) (</c 360))]{
