@@ -6,7 +6,9 @@
                      racket/base
                      racket/contract/base
                      racket/math
-                     racket/sequence)
+                     racket/sequence
+                     rebellion/streaming/reducer
+                     rebellion/streaming/transducer)
           (submod euclid/private/scribble-evaluator-factory doc)
           scribble/example)
 
@@ -14,7 +16,8 @@
 @(define make-evaluator
    (make-module-sharing-evaluator-factory
     #:public (list 'euclid/plane/angle
-                   'euclid/plane/point)
+                   'euclid/plane/point
+                   'rebellion/streaming/transducer)
     #:private (list 'racket/base)))
 
 
@@ -35,6 +38,43 @@ thickness.
 
 @defthing[origin point? #:value (point 0 0)]{
  The @deftech{origin}, which is the point located at coordinates (0,0).}
+
+
+@defproc[(point-add [p point?] ...) point?]{
+ Adds each @racket[p] together and returns a point representing their sum.
+
+ @(examples
+   #:eval (make-evaluator)
+   (point-add (point 2 3) (point 1 5)))}
+
+
+@defproc[(point-sum [points (sequence/c point?)]) point?]{
+ Returns the sum of @racket[points].
+
+ @(examples
+   #:eval (make-evaluator)
+   (point-sum (list (point 1 1) (point 2 2) (point 3 3))))}
+
+
+@defthing[into-point-sum (reducer/c point? point?)]{
+ A reducer that adds together a sequence of points.
+
+ @(examples
+   #:eval (make-evaluator)
+   (transduce (in-range 0 5)
+              (mapping (λ (x) (point x 0)))
+              #:into into-point-sum))}
+
+
+@defproc[(point-distance [p point?] [q point?]) (and/c (>=/c 0) (not/c infinite?))]{
+ Returns the distance between @racket[p] and @racket[q].
+
+ @(examples
+   #:eval (make-evaluator)
+   (point-distance (point 1 1) (point 4 5)))}
+
+
+@section{2D Polar Coordinates}
 
 
 @defproc[(polar-point [radius (and/c (>=/c 0) (not/c infinite?))] [azimuth angle?]) point?]{
@@ -69,19 +109,3 @@ thickness.
    (polar-point-azimuth (point 5 0))
    (polar-point-azimuth (point 5 5))
    (polar-point-azimuth (point 0 5)))}
-
-
-@defproc[(point-add [p point?] ...) point?]{
- Adds each @racket[p] together and returns a point representing their sum.
-
- @(examples
-   #:eval (make-evaluator)
-   (point-add (point 2 3) (point 1 5)))}
-
-
-@defproc[(point-sum [points (sequence/c point?)]) point?]{
- Returns the sum of @racket[points].
-
- @(examples
-   #:eval (make-evaluator)
-   (point-sum (list (point 1 1) (point 2 2) (point 3 3))))}

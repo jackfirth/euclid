@@ -8,12 +8,13 @@
  (struct-out point)
  (contract-out
   [origin point?]
-  [polar-point (-> (and/c (>=/c 0) (not/c infinite?)) angle? point?)]
-  [polar-point-radius (-> point? (and/c (>=/c 0) (not/c infinite?)))]
-  [polar-point-azimuth (-> point? angle?)]
   [point-add (-> point? ... point?)]
   [point-sum (-> (sequence/c point?) point?)]
-  [into-point-sum (reducer/c point? point?)]))
+  [into-point-sum (reducer/c point? point?)]
+  [point-distance (-> point? point? (and/c (>=/c 0) (not/c infinite?)))]
+  [polar-point (-> (and/c (>=/c 0) (not/c infinite?)) angle? point?)]
+  [polar-point-radius (-> point? (and/c (>=/c 0) (not/c infinite?)))]
+  [polar-point-azimuth (-> point? angle?)]))
 
 
 (require euclid/plane/angle
@@ -124,3 +125,16 @@
     (check-equal? (point-add (point 1 2)) (point 1 2))
     (check-equal? (point-add (point 1 2) (point 3 4)) (point 4 6))
     (check-equal? (point-add (point 1 2) (point 3 4) (point 5 6)) (point 9 12))))
+
+
+(define (point-distance p q)
+  (match-define (point x1 y1) p)
+  (match-define (point x2 y2) q)
+  (sqrt (+ (sqr (- x2 x1)) (sqr (- y2 y1)))))
+
+
+(module+ test
+  (test-case "point-distance"
+    (check-equal? (point-distance origin (point 3 4)) 5)
+    (check-equal? (point-distance (point 3 4) origin) 5)
+    (check-equal? (point-distance (point 10 10) (point 13 14)) 5)))
